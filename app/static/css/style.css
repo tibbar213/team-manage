@@ -895,26 +895,30 @@ body {
 /* 生成结果显示优化 */
 .result-box {
     margin-top: 1.5rem;
-    padding: 1rem;
-    background-color: var(--bg-color);
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
+    padding: 1.25rem;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-glass);
 }
 
 .code-display {
     display: flex;
     align-items: center;
     gap: 1rem;
-    margin-top: 0.5rem;
+    margin-top: 0.75rem;
 }
 
 .code-display code {
-    background-color: #eee;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 1.1rem;
+    background-color: rgba(0, 0, 0, 0.3);
+    color: var(--primary);
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-glass);
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 1.2rem;
+    font-weight: 600;
     flex: 1;
+    letter-spacing: 0.05em;
 }
 
 .code-list textarea {

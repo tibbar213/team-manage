@@ -175,14 +175,6 @@
         }
     }
 
-    // 复制兑换码
-    function copyCode(code) {
-        navigator.clipboard.writeText(code).then(() => {
-            showToast('兑换码已复制到剪贴板', 'success');
-        }).catch(() => {
-            showToast('复制失败', 'error');
-        });
-    }
 
     // 导出兑换码
     async function exportCodes() {

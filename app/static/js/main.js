@@ -321,24 +321,70 @@ async function generateBatch(event) {
     }
 }
 
+// 统一复制到剪贴板函数
+async function copyToClipboard(text) {
+    if (!text) return;
+
+    try {
+        // 尝试使用 Modern Clipboard API
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            showToast('已复制到剪贴板', 'success');
+            return true;
+        }
+    } catch (err) {
+        console.error('Modern copy failed:', err);
+    }
+
+    // Fallback: 使用 textarea 方式
+    try {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+
+        // 确保 textarea 不可见且不影响布局
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+
+        textArea.focus();
+        textArea.select();
+
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+
+        if (successful) {
+            showToast('已复制到剪贴板', 'success');
+            return true;
+        }
+    } catch (err) {
+        console.error('Fallback copy failed:', err);
+    }
+
+    showToast('复制失败', 'error');
+    return false;
+}
+
 // === 辅助函数 ===
 
-function copyCode() {
-    const code = document.getElementById('generatedCode').textContent;
-    navigator.clipboard.writeText(code).then(() => {
-        showToast('已复制到剪贴板', 'success');
-    }).catch(() => {
-        showToast('复制失败', 'error');
-    });
+function copyCode(code) {
+    // 如果没有传入 code，尝试从生成结果中获取
+    if (!code) {
+        const generatedCodeEl = document.getElementById('generatedCode');
+        code = generatedCodeEl ? generatedCodeEl.textContent : '';
+    }
+
+    if (code) {
+        copyToClipboard(code);
+    } else {
+        showToast('无内容可复制', 'error');
+    }
 }
 
 function copyBatchCodes() {
     const codes = document.getElementById('batchCodes').value;
-    navigator.clipboard.writeText(codes).then(() => {
-        showToast('已复制到剪贴板', 'success');
-    }).catch(() => {
-        showToast('复制失败', 'error');
-    });
+    copyToClipboard(codes);
 }
 
 function downloadCodes() {
