@@ -99,9 +99,22 @@ def format_datetime(dt):
         return "-"
     if isinstance(dt, str):
         try:
-            dt = datetime.fromisoformat(dt.replace("+00:00", ""))
+            # 兼容包含时区信息的字符串
+            dt = datetime.fromisoformat(dt.replace("Z", "+00:00"))
         except:
             return dt
+    
+    # 统一转换为北京时间显示 (如果它是 aware datetime)
+    import pytz
+    from app.config import settings
+    if dt.tzinfo is None:
+        # 如果是 naive datetime，假设它是本地时区（CST）的时间
+        pass
+    else:
+        # 如果是 aware datetime，转换为目标时区
+        tz = pytz.timezone(settings.timezone)
+        dt = dt.astimezone(tz)
+        
     return dt.strftime("%Y-%m-%d %H:%M")
 
 def escape_js(value):

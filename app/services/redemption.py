@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models import RedemptionCode, RedemptionRecord, Team
+from app.utils.time_utils import get_now
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,7 @@ class RedemptionService:
             # 2. 计算过期时间
             expires_at = None
             if expires_days:
-                expires_at = datetime.now() + timedelta(days=expires_days)
+                expires_at = get_now() + timedelta(days=expires_days)
 
             # 3. 创建兑换码记录
             redemption_code = RedemptionCode(
@@ -163,7 +164,7 @@ class RedemptionService:
             # 计算过期时间
             expires_at = None
             if expires_days:
-                expires_at = datetime.now() + timedelta(days=expires_days)
+                expires_at = get_now() + timedelta(days=expires_days)
 
             # 批量生成兑换码
             codes = []
@@ -261,7 +262,7 @@ class RedemptionService:
 
             # 3. 检查是否过期
             if redemption_code.expires_at:
-                if redemption_code.expires_at < datetime.now():
+                if redemption_code.expires_at < get_now():
                     # 更新状态为 expired
                     redemption_code.status = "expired"
                     await db_session.commit()
@@ -346,7 +347,7 @@ class RedemptionService:
             redemption_code.status = "used"
             redemption_code.used_by_email = email
             redemption_code.used_team_id = team_id
-            redemption_code.used_at = datetime.now()
+            redemption_code.used_at = get_now()
 
             # 3. 创建使用记录
             redemption_record = RedemptionRecord(

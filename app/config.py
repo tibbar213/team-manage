@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     # JWT 配置
     jwt_verify_signature: bool = False
 
+    # 时区配置
+    timezone: str = "Asia/Shanghai"
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",

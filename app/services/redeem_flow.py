@@ -13,6 +13,7 @@ from app.services.redemption import RedemptionService
 from app.services.team import TeamService
 from app.services.chatgpt import ChatGPTService
 from app.services.encryption import encryption_service
+from app.utils.time_utils import get_now
 
 logger = logging.getLogger(__name__)
 
@@ -261,7 +262,7 @@ class RedeemFlowService:
                 redemption_code.status = "used"
                 redemption_code.used_by_email = email
                 redemption_code.used_team_id = team_id
-                redemption_code.used_at = datetime.now()
+                redemption_code.used_at = get_now()
 
                 # 8. 创建使用记录
                 redemption_record = RedemptionRecord(

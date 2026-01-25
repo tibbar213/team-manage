@@ -6,6 +6,7 @@ import jwt
 from typing import Optional, Dict, Any
 from datetime import datetime
 import logging
+from app.utils.time_utils import get_now
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +134,7 @@ class JWTParser:
         if not exp_time:
             return True  # 无法获取过期时间,视为已过期
 
-        return datetime.now() > exp_time
+        return get_now() > exp_time
 
     def validate_token(self, token: str) -> Dict[str, Any]:
         """

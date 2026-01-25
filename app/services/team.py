@@ -14,6 +14,7 @@ from app.services.chatgpt import ChatGPTService
 from app.services.encryption import encryption_service
 from app.utils.token_parser import TokenParser
 from app.utils.jwt_parser import JWTParser
+from app.utils.time_utils import get_now
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +172,7 @@ class TeamService:
                 current_members=current_members,
                 max_members=6,
                 status=status,
-                last_sync=datetime.now()
+                last_sync=get_now()
             )
 
             db_session.add(team)
@@ -408,7 +409,7 @@ class TeamService:
             team.expires_at = expires_at
             team.current_members = current_members
             team.status = status
-            team.last_sync = datetime.now()
+            team.last_sync = get_now()
 
             await db_session.commit()
 

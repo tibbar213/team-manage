@@ -13,6 +13,7 @@ from app.database import get_db
 from app.dependencies.auth import require_admin
 from app.services.team import TeamService
 from app.services.redemption import RedemptionService
+from app.utils.time_utils import get_now
 
 logger = logging.getLogger(__name__)
 
@@ -687,7 +688,7 @@ async def export_codes(
         output.close()
 
         # 生成文件名
-        filename = f"redemption_codes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        filename = f"redemption_codes_{get_now().strftime('%Y%m%d_%H%M%S')}.xlsx"
 
         # 返回Excel文件
         return Response(
@@ -795,7 +796,7 @@ async def records_page(
             record["team_name"] = team["team_name"] if team else None
 
         # 计算统计数据
-        now = datetime.now()
+        now = get_now()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         week_start = today_start - timedelta(days=today_start.weekday())
         month_start = today_start.replace(day=1)
