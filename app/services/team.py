@@ -247,37 +247,39 @@ class TeamService:
         self,
         text: str,
         db_session: AsyncSession
-    ) -> Dict[str, Any]:
+    ):
         """
-        批量导入 Team
+        批量导入 Team (流式返回进度)
 
         Args:
             text: 包含 Token、邮箱、Account ID 的文本
             db_session: 数据库会话
 
-        Returns:
-            结果字典,包含 success, total, success_count, failed_count, results
+        Yields:
+            各阶段进度的 Dict
         """
         try:
             # 1. 解析文本
             parsed_data = self.token_parser.parse_team_import_text(text)
 
             if not parsed_data:
-                return {
-                    "success": False,
-                    "total": 0,
-                    "success_count": 0,
-                    "failed_count": 0,
-                    "results": [],
+                yield {
+                    "type": "error",
                     "error": "未能从文本中提取任何 Token"
                 }
+                return
+
+            total = len(parsed_data)
+            yield {
+                "type": "start",
+                "total": total
+            }
 
             # 2. 逐个导入
-            results = []
             success_count = 0
             failed_count = 0
 
-            for data in parsed_data:
+            for i, data in enumerate(parsed_data):
                 result = await self.import_team_single(
                     access_token=data["token"],
                     db_session=db_session,
@@ -290,35 +292,36 @@ class TeamService:
                 else:
                     failed_count += 1
 
-                results.append({
-                    "email": data.get("email", "未知"),
-                    "account_id": data.get("account_id", "未指定"),
-                    "success": result["success"],
-                    "team_id": result["team_id"],
-                    "message": result["message"],
-                    "error": result["error"]
-                })
+                yield {
+                    "type": "progress",
+                    "current": i + 1,
+                    "total": total,
+                    "success_count": success_count,
+                    "failed_count": failed_count,
+                    "last_result": {
+                        "email": data.get("email", "未知"),
+                        "account_id": data.get("account_id", "未指定"),
+                        "success": result["success"],
+                        "team_id": result["team_id"],
+                        "message": result["message"],
+                        "error": result["error"]
+                    }
+                }
 
-            logger.info(f"批量导入完成: 总数 {len(parsed_data)}, 成功 {success_count}, 失败 {failed_count}")
+            logger.info(f"批量导入完成: 总数 {total}, 成功 {success_count}, 失败 {failed_count}")
 
-            return {
-                "success": True,
-                "total": len(parsed_data),
+            yield {
+                "type": "finish",
+                "total": total,
                 "success_count": success_count,
-                "failed_count": failed_count,
-                "results": results,
-                "error": None
+                "failed_count": failed_count
             }
 
         except Exception as e:
             logger.error(f"批量导入失败: {e}")
-            return {
-                "success": False,
-                "total": 0,
-                "success_count": 0,
-                "failed_count": 0,
-                "results": [],
-                "error": f"批量导入失败: {str(e)}"
+            yield {
+                "type": "error",
+                "error": f"批量导入过程中发生异常: {str(e)}"
             }
 
     async def sync_team_info(

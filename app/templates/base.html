@@ -120,8 +120,30 @@
                             <textarea name="batchContent" class="form-control" rows="8" placeholder="一行一个 AT Token..."
                                 required></textarea>
                         </div>
+                        <div id="batchProgressContainer" style="display: none; margin-bottom: 1.5rem;">
+                            <div class="progress-info"
+                                style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                                <span id="batchProgressStage">正在准备...</span>
+                                <span id="batchProgressPercent">0%</span>
+                            </div>
+                            <div class="progress-bar-bg"
+                                style="width: 100%; height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden;">
+                                <div id="batchProgressBar"
+                                    style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.3s ease;">
+                                </div>
+                            </div>
+                            <div id="batchProgressStats"
+                                style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-dim); display: flex; gap: 1rem;">
+                                <span>成功: <span id="batchSuccessCount" class="text-success">0</span></span>
+                                <span>失败: <span id="batchFailedCount" class="text-danger">0</span></span>
+                            </div>
+                        </div>
                         <div id="batchResultsContainer" style="display: none; margin-bottom: 1rem;">
-                            <h4>导入结果</h4>
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h4 style="margin: 0;">导入详情</h4>
+                                <small id="batchFinalSummary" class="text-muted"></small>
+                            </div>
                             <div id="batchResults"></div>
                         </div>
                         <button type="submit" class="btn btn-primary">批量导入</button>

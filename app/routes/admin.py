@@ -5,7 +5,8 @@
 import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+import json
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 
@@ -213,23 +214,18 @@ async def team_import(
 
             return JSONResponse(content=result)
 
-        elif import_data.import_type == "batch":
-            # 批量导入
-            if not import_data.content:
-                return JSONResponse(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    content={
-                        "success": False,
-                        "error": "批量导入内容不能为空"
-                    }
-                )
+            # 批量导入使用 StreamingResponse
+            async def progress_generator():
+                async for status in team_service.import_team_batch(
+                    text=import_data.content,
+                    db_session=db
+                ):
+                    yield json.dumps(status, ensure_ascii=False) + "\n"
 
-            result = await team_service.import_team_batch(
-                text=import_data.content,
-                db_session=db
+            return StreamingResponse(
+                progress_generator(),
+                media_type="application/x-ndjson"
             )
-
-            return JSONResponse(content=result)
 
         else:
             return JSONResponse(
