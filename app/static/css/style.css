@@ -545,10 +545,11 @@ body {
     box-shadow: var(--shadow-lg);
     transform: scale(0.95);
     transition: var(--transition-base);
-    margin-top: auto;
-    margin-bottom: auto;
+    margin: auto;
     position: relative;
-    max-height: none;
+    max-height: calc(100vh - 4rem);
+    display: flex;
+    flex-direction: column;
 }
 
 .modal-overlay.show .modal {
@@ -561,16 +562,17 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    position: sticky;
-    top: 0;
     background-color: var(--bg-surface);
     z-index: 10;
     border-top-left-radius: var(--radius-lg);
     border-top-right-radius: var(--radius-lg);
+    flex-shrink: 0;
 }
 
 .modal-body {
     padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
 }
 
 .modal-close {
