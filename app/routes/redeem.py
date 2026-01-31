@@ -135,20 +135,20 @@ async def confirm_redeem(
 
         if not result["success"]:
             # 根据错误类型返回不同的状态码
-            if "不存在" in result["error"] or "已使用" in result["error"] or "已过期" in result["error"]:
+            error_msg = result["error"]
+            if any(kw in error_msg for kw in ["不存在", "已使用", "已过期", "截止时间", "已满", "质保", "无效", "失效"]):
+                status_code = status.HTTP_400_BAD_REQUEST
+                if "已满" in error_msg:
+                    status_code = status.HTTP_409_CONFLICT
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=result["error"]
-                )
-            elif "已满" in result["error"]:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail=result["error"]
+                    status_code=status_code,
+                    detail=error_msg
                 )
             else:
+                # 默认系统内部错误
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=result["error"]
+                    detail=error_msg
                 )
 
         return RedeemResponse(

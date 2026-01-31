@@ -47,8 +47,10 @@ class RedeemFlowService:
         """
         try:
             # 1. 验证兑换码
-            validate_result = await self.redemption_service.validate_code(code, db_session)
-
+            # 使用事务以确保状态更新(如标记为已过期)被持久化
+            async with db_session.begin():
+                validate_result = await self.redemption_service.validate_code(code, db_session)
+            
             if not validate_result["success"]:
                 return {
                     "success": False,
@@ -57,7 +59,7 @@ class RedeemFlowService:
                     "teams": [],
                     "error": validate_result["error"]
                 }
-
+            
             if not validate_result["valid"]:
                 return {
                     "success": True,

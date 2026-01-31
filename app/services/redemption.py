@@ -261,7 +261,8 @@ class RedemptionService:
 
             # 2. 检查状态
             if redemption_code.status not in ["unused", "warranty_active"]:
-                reason = "兑换码已被使用" if redemption_code.status == "used" else f"兑换码已{redemption_code.status}"
+                status_text = "已过期" if redemption_code.status == "expired" else redemption_code.status
+                reason = "兑换码已被使用" if redemption_code.status == "used" else f"兑换码{status_text}"
                 return {
                     "success": True,
                     "valid": False,
@@ -275,12 +276,13 @@ class RedemptionService:
                 if redemption_code.expires_at < get_now():
                     # 更新状态为 expired
                     redemption_code.status = "expired"
-                    await db_session.commit()
+                    # 不在服务层内部 commit，让调用方决定事务边界
+                    # await db_session.commit() 
 
                     return {
                         "success": True,
                         "valid": False,
-                        "reason": "兑换码已超过首次兑换截止时间",
+                        "reason": "兑换码已过期 (超过首次兑换截止时间)",
                         "redemption_code": None,
                         "error": None
                     }
