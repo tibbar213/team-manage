@@ -183,8 +183,8 @@ class RedeemFlowService:
                     if not validate_result["valid"]:
                         return {"success": False, "error": validate_result["reason"]}
 
-                    # 再次验证并锁定 (带锁锁定，防止并发)
-                    stmt = select(RedemptionCode).where(RedemptionCode.code == code).with_for_update()
+                    # 再次验证并锁定
+                    stmt = select(RedemptionCode).where(RedemptionCode.code == code)
                     result = await db_session.execute(stmt)
                     redemption_code = result.scalar_one_or_none()
                     
@@ -204,8 +204,8 @@ class RedeemFlowService:
                     else:
                         team_id_final = current_target_team_id
 
-                    # 3. 锁定并检查 Team
-                    stmt = select(Team).where(Team.id == team_id_final).with_for_update()
+                    # 3. 检查 Team
+                    stmt = select(Team).where(Team.id == team_id_final)
                     result = await db_session.execute(stmt)
                     team = result.scalar_one_or_none()
 
@@ -360,7 +360,7 @@ class RedeemFlowService:
                 
             async with db_session.begin():
                 # 回退兑换码状态
-                stmt = select(RedemptionCode).where(RedemptionCode.code == code).with_for_update()
+                stmt = select(RedemptionCode).where(RedemptionCode.code == code)
                 result = await db_session.execute(stmt)
                 redemption_code = result.scalar_one_or_none()
                 if redemption_code:
@@ -394,7 +394,7 @@ class RedeemFlowService:
                         redemption_code.used_at = None
 
                 # 回退 Team 计数
-                stmt = select(Team).where(Team.id == team_id).with_for_update()
+                stmt = select(Team).where(Team.id == team_id)
                 result = await db_session.execute(stmt)
                 team = result.scalar_one_or_none()
                 if team:
