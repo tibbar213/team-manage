@@ -160,6 +160,7 @@ class RedeemFlowService:
         current_target_team_id = team_id
         last_error = "未知错误"
 
+        for attempt in range(max_retries):
             # 彻底确保会话处于干净状态，防止 "A transaction is already begun" 错误
             # SELECT 操作会隐式开启事务，导致后续 begin() 报错
             if db_session.in_transaction():
