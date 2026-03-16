@@ -1476,27 +1476,42 @@ class TeamService:
                     "error": "Team账号受限: 官方拦截下发(响应空列表)，请检查账单/风控状态"
                 }
 
-            # 5. 更新成员数并二次校验邀请是否真的生效 (循环检测 3 次，防止接口返回 200 但实际延迟入库)
-            is_verified = False
-            for i in range(3):
-                await asyncio.sleep(5)
-                sync_res = await self.sync_team_info(team_id, db_session)
-                member_emails = [m.lower() for m in sync_res.get("member_emails", [])]
-                if email.lower() in member_emails:
-                    is_verified = True
-                    logger.info(f"Team {team_id} [add_member] 同步确认成功 (尝试第 {i+1} 次)")
-                    break
-                if i < 2:
-                    logger.warning(f"Team {team_id} [add_member] 尚未见到成员 {email}，准备第 {i+2} 次重试...")
+            # 5. 更新成员数并二次校验邀请是否真的生效 (防止接口返回 200 但实际延迟入库)
+            from app.services.settings import settings_service
+            is_enabled_str = await settings_service.get_setting(db_session, "fake_success_check_enabled", "true")
+            is_enabled = str(is_enabled_str).lower() == "true"
+            
+            if not is_enabled:
+                logger.info(f"Team {team_id} [add_member] 虚假成功检测已临时关闭，略过校验")
+                is_verified = True
+            else:
+                count_str = await settings_service.get_setting(db_session, "fake_success_check_count", "3")
+                interval_str = await settings_service.get_setting(db_session, "fake_success_check_interval", "5")
+                try: count = int(count_str)
+                except: count = 3
+                try: interval = int(interval_str)
+                except: interval = 5
+
+                is_verified = False
+                for i in range(count):
+                    await asyncio.sleep(interval)
+                    sync_res = await self.sync_team_info(team_id, db_session)
+                    member_emails = [m.lower() for m in sync_res.get("member_emails", [])]
+                    if email.lower() in member_emails:
+                        is_verified = True
+                        logger.info(f"Team {team_id} [add_member] 同步确认成功 (尝试第 {i+1} 次)")
+                        break
+                    if i < count - 1:
+                        logger.warning(f"Team {team_id} [add_member] 尚未见到成员 {email}，准备第 {i+2} 次重试...")
             
             if not is_verified:
-                logger.error(f"检测到“虚假成功”: Team {team_id} 发送邀请返回成功，但经过 3 次同步校验均未见该邮箱 {email}")
+                logger.error(f"检测到“虚假成功”: Team {team_id} 发送邀请返回成功，但经过 {count} 次同步校验均未见该邮箱 {email}")
                 # 标记错误
                 await self._handle_api_error({"success": False, "error": "邀请发送成功但同步列表未见成员", "error_code": "ghost_success"}, team, db_session)
                 return {
                     "success": False,
                     "message": None,
-                    "error": "邀请发送成功但 3 次同步成员列表校验均失败，该 Team 账号可能存在延迟或异常。建议稍后手动同步。"
+                    "error": f"邀请发送成功但 {count} 次同步成员列表校验均失败，该 Team 账号可能存在延迟或异常。建议稍后手动同步。"
                 }
 
             await db_session.commit()

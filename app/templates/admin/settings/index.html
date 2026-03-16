@@ -87,6 +87,39 @@
     </form>
 </div>
 
+<!-- 虚假成功检测配置 -->
+<div class="content-section">
+    <div class="section-header">
+        <h3>虚假成功检测</h3>
+    </div>
+
+    <form id="fakeSuccessForm" class="settings-form">
+        <div class="form-group">
+            <label class="checkbox-label">
+                <input type="checkbox" id="fakeSuccessEnabled" name="fake_success_check_enabled" {% if fake_success_check_enabled %}checked{% endif %}>
+                <span>开启虚假成功检测</span>
+            </label>
+            <p class="form-help">启用后,拉人完成后将通过查询验证拉人是否真正成功</p>
+        </div>
+
+        <div class="form-group">
+            <label for="fakeSuccessCount">检测次数</label>
+            <input type="number" id="fakeSuccessCount" name="fake_success_check_count"
+                value="{{ fake_success_check_count or '3' }}" min="1" class="form-control">
+            <p class="form-help">同步检查的重试次数</p>
+        </div>
+
+        <div class="form-group">
+            <label for="fakeSuccessInterval">检测间隔(秒)</label>
+            <input type="number" id="fakeSuccessInterval" name="fake_success_check_interval"
+                value="{{ fake_success_check_interval or '5' }}" min="1" class="form-control">
+            <p class="form-help">每次同步检测之间等待的间隔时间</p>
+        </div>
+
+        <button type="submit" class="btn btn-primary">保存检测配置</button>
+    </form>
+</div>
+
 <!-- Webhook 配置 -->
 <div class="content-section">
     <div class="section-header">
@@ -239,6 +272,40 @@
 
             if (response.ok && data.success) {
                 showToast('日志级别已保存', 'success');
+            } else {
+                showToast(data.error || '保存失败', 'error');
+            }
+        } catch (error) {
+            showToast('网络错误', 'error');
+        }
+    });
+
+    // 虚假成功检测配置表单
+    document.getElementById('fakeSuccessForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const fake_success_check_enabled = document.getElementById('fakeSuccessEnabled').checked;
+        const fake_success_check_count = parseInt(document.getElementById('fakeSuccessCount').value);
+        const fake_success_check_interval = parseInt(document.getElementById('fakeSuccessInterval').value);
+
+        if (isNaN(fake_success_check_count) || fake_success_check_count < 1 || isNaN(fake_success_check_interval) || fake_success_check_interval < 1) {
+            showToast('请输入有效的检测次数和间隔', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/admin/settings/fake-success', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ fake_success_check_enabled, fake_success_check_count, fake_success_check_interval })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                showToast('虚假成功检测配置已保存', 'success');
             } else {
                 showToast(data.error || '保存失败', 'error');
             }

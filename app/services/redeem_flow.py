@@ -389,9 +389,24 @@ class RedeemFlowService:
         """
         async with AsyncSessionLocal() as db_session:
             try:
+                from app.services.settings import settings_service
+                is_enabled_str = await settings_service.get_setting(db_session, "fake_success_check_enabled", "true")
+                is_enabled = str(is_enabled_str).lower() == "true"
+                
+                if not is_enabled:
+                    logger.info(f"Team {team_id} [Background] 虚假成功检测已临时关闭，略过校验")
+                    return
+                
+                count_str = await settings_service.get_setting(db_session, "fake_success_check_count", "3")
+                interval_str = await settings_service.get_setting(db_session, "fake_success_check_interval", "5")
+                try: count = int(count_str)
+                except: count = 3
+                try: interval = int(interval_str)
+                except: interval = 5
+
                 is_verified = False
-                for i in range(3):
-                    await asyncio.sleep(5)
+                for i in range(count):
+                    await asyncio.sleep(interval)
                     # 每次同步前确保 session 是最新的
                     sync_res = await self.team_service.sync_team_info(team_id, db_session)
                     member_emails = [m.lower() for m in sync_res.get("member_emails", [])]
@@ -400,18 +415,18 @@ class RedeemFlowService:
                         logger.info(f"Team {team_id} [Background] 同步确认成功 (尝试第 {i+1} 次)")
                         break
                     
-                    if i < 2:
+                    if i < count - 1:
                         logger.warning(f"Team {team_id} [Background] 尚未见到成员 {email}，准备第 {i+2} 次重试...")
                 
                 if not is_verified:
-                    logger.error(f"检测到“虚假成功”: Team {team_id} 兑换成功但 15s 后仍查不到成员 {email}")
+                    logger.error(f"检测到“虚假成功”: Team {team_id} 兑换成功但 {count * interval}s 后仍查不到成员 {email}")
                     # 在后台标记异常
                     stmt = select(Team).where(Team.id == team_id)
                     t_res = await db_session.execute(stmt)
                     target_t = t_res.scalar_one_or_none()
                     if target_t:
                         await self.team_service._handle_api_error(
-                            {"success": False, "error": "兑换成功但 3 次同步均未见成员", "error_code": "ghost_success"},
+                            {"success": False, "error": f"兑换成功但 {count} 次同步均未见成员", "error_code": "ghost_success"},
                             target_t, db_session
                         )
             except Exception as e:

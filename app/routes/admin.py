@@ -1295,6 +1295,8 @@ async def settings_page(
         proxy_config = await settings_service.get_proxy_config(db)
         log_level = await settings_service.get_log_level(db)
 
+        fake_success_check_enabled = await settings_service.get_setting(db, "fake_success_check_enabled", "true")
+
         return templates.TemplateResponse(
             "admin/settings/index.html",
             {
@@ -1306,7 +1308,10 @@ async def settings_page(
                 "log_level": log_level,
                 "webhook_url": await settings_service.get_setting(db, "webhook_url", ""),
                 "low_stock_threshold": await settings_service.get_setting(db, "low_stock_threshold", "10"),
-                "api_key": await settings_service.get_setting(db, "api_key", "")
+                "api_key": await settings_service.get_setting(db, "api_key", ""),
+                "fake_success_check_enabled": str(fake_success_check_enabled).lower() == "true",
+                "fake_success_check_interval": await settings_service.get_setting(db, "fake_success_check_interval", "5"),
+                "fake_success_check_count": await settings_service.get_setting(db, "fake_success_check_count", "3")
             }
         )
 
@@ -1456,6 +1461,47 @@ async def update_webhook_settings(
             "webhook_url": webhook_data.webhook_url.strip(),
             "low_stock_threshold": str(webhook_data.low_stock_threshold),
             "api_key": webhook_data.api_key.strip()
+        }
+
+        success = await settings_service.update_settings(db, settings)
+
+        if success:
+            return JSONResponse(content={"success": True, "message": "配置已保存"})
+        else:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"success": False, "error": "保存失败"}
+            )
+
+    except Exception as e:
+        logger.error(f"更新配置失败: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"success": False, "error": f"更新失败: {str(e)}"}
+        )
+
+class FakeSuccessSettingsRequest(BaseModel):
+    """虚假成功预警 设置请求"""
+    fake_success_check_enabled: bool = Field(True, description="是否开启虚假成功检测")
+    fake_success_check_interval: int = Field(5, description="检测间隔(秒)")
+    fake_success_check_count: int = Field(3, description="检测次数")
+
+@router.post("/settings/fake-success")
+async def update_fake_success_settings(
+    settings_data: FakeSuccessSettingsRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_admin)
+):
+    """更新虚假成功预警配置"""
+    try:
+        from app.services.settings import settings_service
+
+        logger.info(f"管理员更新虚假成功检测配置: enabled={settings_data.fake_success_check_enabled}")
+
+        settings = {
+            "fake_success_check_enabled": str(settings_data.fake_success_check_enabled).lower(),
+            "fake_success_check_interval": str(settings_data.fake_success_check_interval),
+            "fake_success_check_count": str(settings_data.fake_success_check_count)
         }
 
         success = await settings_service.update_settings(db, settings)
