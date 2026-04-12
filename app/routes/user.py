@@ -41,9 +41,9 @@ async def redeem_page(
         logger.info(f"用户访问兑换页面，剩余车位: {remaining_spots}")
 
         return templates.TemplateResponse(
+            request,
             "user/redeem.html",
             {
-                "request": request,
                 "remaining_spots": remaining_spots
             }
         )
