@@ -5,7 +5,7 @@
 import logging
 import sqlite3
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,48 @@ def column_exists(cursor, table_name, column_name):
     cursor.execute(f"PRAGMA table_info({table_name})")
     columns = [row[1] for row in cursor.fetchall()]
     return column_name in columns
+
+
+def repair_warranty_timestamps(cursor) -> int:
+    """
+    用首次兑换时间回填质保起点，避免重复质保兑换重置质保期。
+    """
+    cursor.execute(
+        """
+        SELECT
+            rc.id,
+            rc.warranty_days,
+            MIN(rr.redeemed_at) AS first_redeemed_at
+        FROM redemption_codes rc
+        JOIN redemption_records rr ON rr.code = rc.code
+        WHERE rc.has_warranty = 1
+        GROUP BY rc.id, rc.warranty_days
+        """
+    )
+
+    repaired = 0
+    for code_id, warranty_days, first_redeemed_at in cursor.fetchall():
+        if not first_redeemed_at:
+            continue
+
+        first_redeemed_dt = datetime.fromisoformat(str(first_redeemed_at))
+        warranty_expires_at = first_redeemed_dt + timedelta(days=warranty_days or 30)
+
+        cursor.execute(
+            """
+            UPDATE redemption_codes
+            SET used_at = ?, warranty_expires_at = ?
+            WHERE id = ?
+            """,
+            (
+                first_redeemed_dt.isoformat(sep=" "),
+                warranty_expires_at.isoformat(sep=" "),
+                code_id,
+            ),
+        )
+        repaired += 1
+
+    return repaired
 
 
 def run_auto_migration():
@@ -106,6 +148,10 @@ def run_auto_migration():
             logger.info("添加 teams.device_code_auth_enabled 字段")
             cursor.execute("ALTER TABLE teams ADD COLUMN device_code_auth_enabled BOOLEAN DEFAULT 0")
             migrations_applied.append("teams.device_code_auth_enabled")
+
+        repaired_codes = repair_warranty_timestamps(cursor)
+        if repaired_codes:
+            migrations_applied.append(f"repair.warranty_timestamps({repaired_codes})")
         
         # 提交更改
         conn.commit()
