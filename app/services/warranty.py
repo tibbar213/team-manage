@@ -6,7 +6,7 @@ import logging
 import asyncio
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
-from sqlalchemy import select, and_, or_, delete
+from sqlalchemy import select, and_, or_, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -27,6 +27,18 @@ class WarrantyService:
         """初始化质保服务"""
         from app.services.team import TeamService
         self.team_service = TeamService()
+
+    async def _get_first_redeemed_at(
+        self,
+        db_session: AsyncSession,
+        code: str
+    ) -> Optional[datetime]:
+        """获取兑换码的首次兑换时间。"""
+        stmt = select(func.min(RedemptionRecord.redeemed_at)).where(
+            RedemptionRecord.code == code
+        )
+        result = await db_session.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def check_warranty_status(
         self,
@@ -193,7 +205,9 @@ class WarrantyService:
                 
                 # 如果是质保码且已使用，但到期时间为空，尝试动态计算
                 if code_obj.has_warranty and not expiry_date:
-                    start_time = code_obj.used_at or record.redeemed_at # 优先取首次使用时间
+                    start_time = await self._get_first_redeemed_at(db_session, code_obj.code)
+                    if not start_time:
+                        start_time = code_obj.used_at or record.redeemed_at
                     if start_time:
                         days = code_obj.warranty_days or 30
                         expiry_date = start_time + timedelta(days=days)

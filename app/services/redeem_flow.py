@@ -295,20 +295,25 @@ class RedeemFlowService:
                                 raise Exception("Team账号受限: 官方拦截下发(响应空列表)，请检查账单/风控状态")
 
                             # 成功逻辑
+                            redemption_time = get_now()
+                            is_first_redemption = rc.used_at is None
+
                             rc.status = "used"
-                            rc.used_by_email = email
-                            rc.used_team_id = team_id_final
-                            rc.used_at = get_now()
-                            if rc.has_warranty:
-                                days = rc.warranty_days or 30
-                                rc.warranty_expires_at = get_now() + timedelta(days=days)
+                            if is_first_redemption:
+                                rc.used_by_email = email
+                                rc.used_team_id = team_id_final
+                                rc.used_at = redemption_time
+                                if rc.has_warranty:
+                                    days = rc.warranty_days or 30
+                                    rc.warranty_expires_at = redemption_time + timedelta(days=days)
 
                             record = RedemptionRecord(
                                 email=email,
                                 code=code,
                                 team_id=team_id_final,
                                 account_id=target_team.account_id,
-                                is_warranty_redemption=rc.has_warranty
+                                is_warranty_redemption=rc.has_warranty,
+                                redeemed_at=redemption_time
                             )
                             db_session.add(record)
                             target_team.current_members += 1
